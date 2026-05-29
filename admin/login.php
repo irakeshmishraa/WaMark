@@ -5,6 +5,17 @@
 require_once dirname(__DIR__) . '/config/constants.php';
 require_once dirname(__DIR__) . '/config/app.php';
 
+// If not installed, redirect to installer
+if (!IS_INSTALLED) {
+    header('Location: ' . BASE_URL . '/installer/');
+    exit;
+}
+
+// If DB connection failed
+if (!$db) {
+    die('Database connection failed. Please check your .env file configuration or <a href="' . BASE_URL . '/installer/">re-run the installer</a>.');
+}
+
 // Redirect if already logged in
 if (Auth::check()) {
     redirect(Auth::isClient() ? USER_URL : ADMIN_URL);

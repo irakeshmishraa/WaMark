@@ -351,8 +351,13 @@ function get_setting($key, $default = null) {
     
     static $settings = null;
     if ($settings === null) {
-        $rows = $db->fetchAll("SELECT setting_key, setting_value FROM " . $db->table('settings'));
-        $settings = array_column($rows, 'setting_value', 'setting_key');
+        try {
+            $rows = $db->fetchAll("SELECT setting_key, setting_value FROM " . $db->table('settings'));
+            $settings = array_column($rows, 'setting_value', 'setting_key');
+        } catch (Exception $e) {
+            $settings = [];
+            return $default;
+        }
     }
     return $settings[$key] ?? $default;
 }
