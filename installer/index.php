@@ -138,15 +138,21 @@ function setupDatabase($data) {
     }
 
     try {
-        // Test connection
-        $dsn = "mysql:host={$host};port={$port};charset=utf8mb4";
-        $pdo = new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]);
-
-        // Create database if not exists
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        $pdo->exec("USE `{$name}`");
+        // First try connecting directly to the database (shared hosting usually pre-creates it)
+        $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+        try {
+            $pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]);
+        } catch (PDOException $e) {
+            // If direct connection fails, try without dbname and create it
+            $dsn = "mysql:host={$host};port={$port};charset=utf8mb4";
+            $pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]);
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $pdo->exec("USE `{$name}`");
+        }
 
         // Import schema
         $schemaFile = dirname(__DIR__) . '/database/schema.sql';

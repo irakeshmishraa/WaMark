@@ -26,7 +26,8 @@
         </div>
         <div class="col-md-6">
             <label class="form-label fw-medium">Database Password</label>
-            <input type="password" class="form-control" name="db_pass" placeholder="••••••••">
+            <input type="text" class="form-control" name="db_pass" placeholder="Your database password" autocomplete="off">
+            <small class="text-muted">Leave empty if no password</small>
         </div>
         <div class="col-12">
             <label class="form-label fw-medium">Table Prefix</label>
