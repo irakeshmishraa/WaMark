@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'setup_database':
             $result = setupDatabase($_POST);
             if ($result === true) {
-                $_SESSION['installer_db'] = $_POST;
+                // Session is already set correctly inside setupDatabase()
                 $step = 4;
             } else {
                 $error = $result;
@@ -170,7 +170,7 @@ function setupDatabase($data) {
         $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
         $pdo->exec($schema);
 
-        // Store in session
+        // Store in session AND temp file (sessions can be unreliable on shared hosting)
         $_SESSION['installer_db'] = [
             'host' => $host,
             'port' => $port,
@@ -179,6 +179,18 @@ function setupDatabase($data) {
             'pass' => $pass,
             'prefix' => $prefix,
         ];
+
+        // Also store as temp file backup
+        $tempFile = dirname(__DIR__) . '/config/.db_temp.php';
+        $tempContent = '<?php return ' . var_export([
+            'host' => $host,
+            'port' => $port,
+            'name' => $name,
+            'user' => $user,
+            'pass' => $pass,
+            'prefix' => $prefix,
+        ], true) . ';';
+        file_put_contents($tempFile, $tempContent);
 
         return true;
     } catch (PDOException $e) {
@@ -209,8 +221,17 @@ function createAdmin($data) {
     }
 
     $db = $_SESSION['installer_db'] ?? null;
-    if (!$db) {
-        return 'Database configuration not found. Please go back to step 3.';
+    
+    // Fallback: read from temp file if session lost
+    if (!$db || empty($db['pass'])) {
+        $tempFile = dirname(__DIR__) . '/config/.db_temp.php';
+        if (file_exists($tempFile)) {
+            $db = include $tempFile;
+        }
+    }
+    
+    if (!$db || empty($db['host']) || empty($db['user'])) {
+        return 'Database configuration not found. Please go back to step 3 and re-enter your details.';
     }
 
     try {
@@ -242,6 +263,15 @@ function createAdmin($data) {
 
 function finalizeInstallation() {
     $db = $_SESSION['installer_db'] ?? null;
+    
+    // Fallback: read from temp file if session lost
+    if (!$db || empty($db['pass'])) {
+        $tempFile = dirname(__DIR__) . '/config/.db_temp.php';
+        if (file_exists($tempFile)) {
+            $db = include $tempFile;
+        }
+    }
+    
     if (!$db) {
         header('Location: ?step=3');
         exit;
@@ -322,6 +352,12 @@ CRON_SECRET_KEY={$cronKey}
         'installed_at' => date('Y-m-d H:i:s'),
         'php_version' => PHP_VERSION,
     ]));
+
+    // Clean up temp file
+    $tempFile = $rootPath . '/config/.db_temp.php';
+    if (file_exists($tempFile)) {
+        @unlink($tempFile);
+    }
 
     // Clear session
     unset($_SESSION['installer_db']);
