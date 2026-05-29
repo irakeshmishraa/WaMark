@@ -12,9 +12,22 @@ if (!defined('WAMARK_VERSION')) {
 // Load environment configuration
 $envFile = ROOT_PATH . '.env';
 if (file_exists($envFile)) {
-    $envVars = parse_ini_file($envFile);
-    if ($envVars) {
-        foreach ($envVars as $key => $value) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines) {
+        foreach ($lines as $line) {
+            $line = trim($line);
+            // Skip comments
+            if (empty($line) || $line[0] === '#') continue;
+            // Parse KEY=VALUE (handle values with special chars like #)
+            if (strpos($line, '=') === false) continue;
+            $pos = strpos($line, '=');
+            $key = trim(substr($line, 0, $pos));
+            $value = trim(substr($line, $pos + 1));
+            // Remove surrounding quotes if present
+            if ((str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+                (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
+                $value = substr($value, 1, -1);
+            }
             $_ENV[$key] = $value;
             putenv("$key=$value");
         }
@@ -131,6 +144,18 @@ if (IS_INSTALLED) {
         if (APP_DEBUG) {
             die('Database Error: ' . $e->getMessage());
         }
-        die('Database connection failed. Please check your configuration.');
+        // If DB connection fails, maybe bad .env - allow re-install
+        // Delete the lock file so installer can run again
+        $lockFile = ROOT_PATH . 'config/installed.lock';
+        if (file_exists($lockFile)) {
+            @unlink($lockFile);
+        }
+        // Redirect to installer
+        $installerUrl = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+        if (strpos($installerUrl, '/admin') !== false || strpos($installerUrl, '/user') !== false) {
+            $installerUrl = dirname($installerUrl);
+        }
+        header('Location: ' . $installerUrl . '/installer/');
+        exit;
     }
 }

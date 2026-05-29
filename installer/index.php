@@ -273,7 +273,7 @@ DB_HOST={$db['host']}
 DB_PORT={$db['port']}
 DB_NAME={$db['name']}
 DB_USER={$db['user']}
-DB_PASS={$db['pass']}
+DB_PASS=\"{$db['pass']}\"
 DB_PREFIX={$db['prefix']}
 
 # Mail Configuration
