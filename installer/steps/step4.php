@@ -1,14 +1,33 @@
-<?php /** Step 4: Admin Account Setup */ ?>
+<?php /** Step 4: Admin Account Setup */ 
+// Get DB config from session or temp file
+$dbConfig = $_SESSION['installer_db'] ?? null;
+if (!$dbConfig || empty($dbConfig['pass'])) {
+    $tempFile = dirname(dirname(__DIR__)) . '/config/.db_temp.php';
+    if (file_exists($tempFile)) {
+        $dbConfig = include $tempFile;
+    }
+}
+?>
 <h4 class="mb-4"><i class="bi bi-person-badge text-primary"></i> Create Admin Account</h4>
 <p class="text-muted mb-4">Set up your super administrator account.</p>
 
 <form method="POST" id="adminForm">
     <input type="hidden" name="action" value="create_admin">
     
+    <!-- Pass DB credentials as hidden fields (session backup) -->
+    <?php if ($dbConfig): ?>
+    <input type="hidden" name="_db_host" value="<?= htmlspecialchars($dbConfig['host'] ?? 'localhost') ?>">
+    <input type="hidden" name="_db_port" value="<?= htmlspecialchars($dbConfig['port'] ?? '3306') ?>">
+    <input type="hidden" name="_db_name" value="<?= htmlspecialchars($dbConfig['name'] ?? '') ?>">
+    <input type="hidden" name="_db_user" value="<?= htmlspecialchars($dbConfig['user'] ?? '') ?>">
+    <input type="hidden" name="_db_pass" value="<?= htmlspecialchars($dbConfig['pass'] ?? '') ?>">
+    <input type="hidden" name="_db_prefix" value="<?= htmlspecialchars($dbConfig['prefix'] ?? 'wm_') ?>">
+    <?php endif; ?>
+    
     <div class="row g-3">
         <div class="col-12">
             <label class="form-label fw-medium">Full Name</label>
-            <input type="text" class="form-control" name="admin_name" placeholder="John Doe" required>
+            <input type="text" class="form-control" name="admin_name" placeholder="Your Full Name" required>
         </div>
         <div class="col-12">
             <label class="form-label fw-medium">Email Address</label>

@@ -220,19 +220,40 @@ function createAdmin($data) {
         return 'Passwords do not match.';
     }
 
-    $db = $_SESSION['installer_db'] ?? null;
+    // Try multiple sources for DB credentials (in order of reliability)
+    $db = null;
     
-    // Fallback: read from temp file if session lost
-    if (!$db || empty($db['pass'])) {
+    // Source 1: Hidden form fields (most reliable - sent with this request)
+    if (!empty($data['_db_user']) && !empty($data['_db_name'])) {
+        $db = [
+            'host' => $data['_db_host'] ?? 'localhost',
+            'port' => $data['_db_port'] ?? '3306',
+            'name' => $data['_db_name'],
+            'user' => $data['_db_user'],
+            'pass' => $data['_db_pass'] ?? '',
+            'prefix' => $data['_db_prefix'] ?? 'wm_',
+        ];
+    }
+    
+    // Source 2: Temp file
+    if (!$db || empty($db['user'])) {
         $tempFile = dirname(__DIR__) . '/config/.db_temp.php';
         if (file_exists($tempFile)) {
             $db = include $tempFile;
         }
     }
     
-    if (!$db || empty($db['host']) || empty($db['user'])) {
+    // Source 3: Session
+    if (!$db || empty($db['user'])) {
+        $db = $_SESSION['installer_db'] ?? null;
+    }
+    
+    if (!$db || empty($db['host']) || empty($db['user']) || empty($db['name'])) {
         return 'Database configuration not found. Please go back to step 3 and re-enter your details.';
     }
+    
+    // Also save to session for finalizeInstallation
+    $_SESSION['installer_db'] = $db;
 
     try {
         $dsn = "mysql:host={$db['host']};port={$db['port']};dbname={$db['name']};charset=utf8mb4";
